@@ -11,10 +11,6 @@ m = 6
 # k - number of orders
 k = 2
 
-# product_info[][] - information(processes needed) of each type of product
-product_info = [[0, 1, 2],
-                [0, 2]]
-
 # holding_cost[k] - unit holding cost of order k
 holding_cost = [1.0, 1.0]
 
@@ -57,6 +53,39 @@ firm_start = [0, 1]
 # firm_end - the set of firms where production can end
 firm_end = [4, 5]
 
+# order_process[][] - processes needed for each type of product. In this file number_of_order_type=3
+order_process = [[0, 1, 2],
+                 [0, 2],
+                 [0, 1, 2]]
+
+# order_network[][][] - network of each type of product (network presented by two-dimensional array)
+order_network = [
+    [
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1]
+    ],
+    [
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1]
+    ],
+    [
+        [1, 1, 0, 1, 0, 1],
+        [0, 1, 1, 1, 1, 0],
+        [1, 0, 1, 1, 0, 1],
+        [1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 0, 1, 1]
+    ]
+]
+
 # order_type[k] - type of product of each order
 order_type = [0, 0]
 
@@ -94,6 +123,9 @@ production_end = opt_model.continuous_var_list(k, lb=0, ub=None, name="productio
 # is_processed_by[k][m] - equals 1 if order k is processed at manufacturer m, else 0
 is_processed_by = opt_model.binary_var_matrix(k, m, name="k%s_is_processed_by_m%s")
 
+# is_processed_by_hat[k][m1][m2] = is_processed_by[k][m1] * is_processed_by[k][m2]
+is_processed_by_hat = opt_model.binary_var_cube(k, m, m, name="k%s_is_processed_by_(hat)_m%s_and_m%s")
+
 # is_delayed[k] - equals 1 if the production ends after the required delivery time, else 0
 is_delayed = opt_model.binary_var_list(k, name="k%s_is_delayed")
 
@@ -103,11 +135,15 @@ is_delayed_hat = opt_model.binary_var_list(k, name="k%s_is_delayed_hat")
 # is_passed_from[k][m1][m2] - equals 1 if order k is passed from firm m1 to firm m2
 is_passed_from = opt_model.binary_var_cube(keys1=k, keys2=m, keys3=m, name="k%s_is_passed_from_m%s_to_m%s")
 
+# is_processed_straight_after[k1][k2][m] - equals 1 if order k2 is the next order processed after order k1 at firm m, else 0
+is_processed_straight_after = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m,
+                                                        name="k%s_is_processed_straight_after_k%s_at_m%s")
+
 # is_merged_with[k1][k2][m] - equals 1 if order k2 starts immediately after order k1 at firm m
-is_merged_with = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m, name="is_merged_with")
+is_merged_with = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m, name="k%s_is_merged_with_k%s_at_m%s")
 
 # is_merged_with_hat[k1][k2][m] = is_merged_with[k1][k2][m] * is_processed_by[k1][m]
-is_merged_with_hat = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m, name="is_merged_with_hat")
+is_merged_with_hat = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m, name="k%s_is_merged_with_(hat)_k%s_at_m%s")
 
 # Objective function
 objective_function = opt_model.sum(
@@ -127,16 +163,19 @@ opt_model.add_kpi(objective_function, 'Objective Function')
 
 # constraint #12
 opt_model.add_constraints_(
-    opt_model.sum(opt_model.sum(is_passed_from[i][j][l] for l in range(m)) for j in firm_start) == 1 for i in range(k))
+    opt_model.sum(opt_model.sum(is_passed_from[i][j][l] for l in range(m)) for j in firm_start) == 1
+    for i in range(k))
 
 # constraint #13
 opt_model.add_constraints_(
-    opt_model.sum(opt_model.sum(is_passed_from[i][l][j] for l in range(m)) for j in firm_end) == 1 for i in range(k))
+    opt_model.sum(opt_model.sum(is_passed_from[i][l][j] for l in range(m)) for j in firm_end) == 1
+    for i in range(k))
 
 # constraint #14
 opt_model.add_constraints_(
     opt_model.add_constraints(opt_model.sum(is_passed_from[i][l][j] for l in range(m)) == opt_model.sum(
-        is_passed_from[i][j][l] for l in range(m)) for j in set(range(m)) - set(firm_start) - set(firm_end)) for i
+        is_passed_from[i][j][l] for l in range(m)) for j in set(range(m)) - set(firm_start) - set(firm_end))
+    for i
     in range(k)
 )
 
@@ -145,16 +184,19 @@ opt_model.add_constraints_(
     opt_model.add_constraints(
         opt_model.add_constraints(process_end[i][j] + trsptt_time[i][j][l] + process_time[i][l] * quantity[i] <=
                                   process_end[i][l] + large_number * (1 - is_passed_from[i][j][l])
-                                  for l in range(m)) for j in range(m)) for i in range(k))
+                                  for l in range(m)) for j in range(m))
+    for i in range(k))
 
 # constraint #16
 opt_model.add_constraints_(
-    opt_model.sum(is_processed_by[i][j] for j in firm_start) == 1 for i in range(k)
+    opt_model.sum(is_processed_by[i][j] for j in firm_start) == 1
+    for i in range(k)
 )
 
 # constraint #17
 opt_model.add_constraints_(
-    opt_model.sum(is_processed_by[i][j] for j in firm_end) == 1 for i in range(k)
+    opt_model.sum(is_processed_by[i][j] for j in firm_end) == 1
+    for i in range(k)
 )
 
 # constraint #20 part one
@@ -163,7 +205,8 @@ opt_model.add_constraints_(
     opt_model.add_constraints(
         opt_model.add_constraints(is_merged_with[i][l][j] <= f(i, l) for l in range(k)
                                   ) for i in range(k)
-    ) for j in range(m)
+    )
+    for j in range(m)
 )
 
 # constraint #20 part two
@@ -172,7 +215,8 @@ opt_model.add_constraints_(
     opt_model.add_constraints(
         opt_model.add_constraints(is_merged_with[i][l][j] <= f(order_type[i], order_type[l]) for l in range(k)) for i in
         range(k)
-    ) for j in range(m)
+    )
+    for j in range(m)
 )
 
 # constraint #21
@@ -185,7 +229,8 @@ opt_model.add_constraints_(
 # constraint #22
 opt_model.add_constraints_(
     opt_model.sum(opt_model.sum(is_merged_with[i][l][j] for l in range(k)) for i in range(k)) <=
-    opt_model.sum(is_processed_by[i][j] for i in range(k)) - 1 for j in range(m)
+    opt_model.sum(is_processed_by[i][j] for i in range(k)) - 1
+    for j in range(m)
 )
 
 # constraint #23
@@ -194,7 +239,8 @@ opt_model.add_constraints_(
         opt_model.add_constraints(
             process_start[l][j] >= process_start[i][j] + is_processed_by[i][j] * quantity[i] * process_time[
                 i] - large_number * (1 - is_merged_with[i][l][j])
-            for l in range(k)) for j in range(m)) for
+            for l in range(k)) for j in range(m))
+    for
     i in range(k)
 )
 
@@ -204,20 +250,58 @@ opt_model.add_constraints_(
         opt_model.add_constraints(
             process_start[l][j] <= process_start[i][j] + is_processed_by[i][j] * quantity[i] * process_time[
                 i] + large_number * (1 - is_merged_with[i][l][j])
-            for l in range(k)) for j in range(m)) for
+            for l in range(k)) for j in range(m))
+    for
     i in range(k)
 )
 
+# constraint #25
+f = lambda x, y: 0 if x == y else 1
+opt_model.add_constraints_(
+    opt_model.add_constraints(
+        opt_model.add_constraints(is_processed_straight_after[i][l][j] <= f(i, l) for l in range(k)
+                                  ) for i in range(k)
+    )
+    for j in range(m)
+)
 
+# constraint #26
+opt_model.add_constraints_(
+    opt_model.add_constraints(
+        opt_model.add_constraints(
+            process_end[i][j] - large_number * (1 - is_processed_straight_after[i][l][j]) - process_start[l][j] <= 0
+            for l in range(k)) for j in range(m))
+    for
+    i in range(k)
+)
 
+# constraint #27
+opt_model.add_constraints_(
+    opt_model.add_constraints(
+        opt_model.sum(is_processed_straight_after[i][l][j] for i in range(k)) <= is_processed_by[l][j] for j
+        in range(m))
+    for l in range(k)
+)
 
+# constraint #28
+opt_model.add_constraints_(
+    opt_model.sum(opt_model.sum(is_processed_straight_after[i][l][j] for l in range(k)) for i in range(k)) <=
+    opt_model.sum(is_processed_by[i][j] for i in range(k)) - 1
+    for j in range(m)
+)
 
+# constraint #29
+opt_model.add_constraints_(
+    opt_model.add_constraints(
+        opt_model.add_constraints(
+            is_processed_straight_after[i][l][j] >= is_merged_with[i][l][j]
+            for l in range(k)) for j in range(m))
+    for
+    i in range(k)
+)
 
-
-
-
-
-
+# constraint #35-1
+isp
 
 # def print_hi(name):
 #     # Use a breakpoint in the code line below to debug your script.
