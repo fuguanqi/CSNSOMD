@@ -26,8 +26,8 @@ delay_penalty = [2.0, 2.0]
 # process_time[k][m] - unit processing time of order k at firm m
 # process_time = [[1.0, 1.5, 2.2, 2.4, 1.7, 1.8],
 #                 [1.0, 1.5, 2.2, 2.4, 1.7, 1.8]]
-process_time = [[0, 0, 2],
-                [0, 0, 2]]
+process_time = [[1, 0, 1],
+                [0, 3, 3]]
 
 # quantity[k] - quantity of order k
 # quantity = [10, 10]
@@ -40,13 +40,13 @@ variable_cost = [0, 0, 0.4]
 fixed_cost = [0, 0, 994.8]
 
 # trsptt_time[m1][m2] - transportation time from firm m1 to firm m2
-trsptt_time = [[0, 0, 3.3],
-               [0, 0, 3.3],
+trsptt_time = [[0, 0, 10],
+               [0, 0, 10],
                [0, 0, 0]]
 
 # due_time[k] - due time of order k
 # due_time = [55.0, 55.0]
-due_time = [55.0, 55.0]
+due_time = [18.0, 55.0]
 
 # firm_start - the set of firms where production can start
 firm_start = [0, 1]
@@ -111,7 +111,7 @@ def build_model():
     is_delayed = opt_model.binary_var_list(k, name="k%s_is_delayed")
 
     # is_delayed_hat[k] = is_delayed[k] * production_end[k]
-    is_delayed_hat = opt_model.binary_var_list(k, name="k%s_is_delayed_hat")
+    is_delayed_hat = opt_model.continuous_var_list(k, name="k%s_is_delayed_hat")
 
     # is_passed_from[k][m1][m2] - equals 1 if order k is passed from firm m1 to firm m2
     is_passed_from = opt_model.binary_var_cube(keys1=k, keys2=m, keys3=m, name="k%s_is_passed_from_m%s_to_m%s")
@@ -448,7 +448,7 @@ def build_model():
 
     # constraint #46-2
     opt_model.add_constraints_(
-        due_time[i] - production_end[i] >= 0.001 - (0.001 + large_number) * is_delayed[i]
+        due_time[i] - production_end[i] >= 0.001 - large_number * is_delayed[i]
         for i in range(k)
     )
 
