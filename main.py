@@ -140,9 +140,9 @@ def build_model():
     # is_passed_from[k][m1][m2] - equals 1 if order k is passed from firm m1 to firm m2
     is_passed_from = opt_model.binary_var_cube(keys1=k, keys2=m, keys3=m, name="k%s_is_passed_from_m%s_to_m%s")
 
-    # is_processed_straight_after[k1][k2][m] - equals 1 if order k2 is the next order processed after order k1 at firm m, else 0
-    is_processed_straight_after = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m,
-                                                            name="k%s_is_processed_straight_after_k%s_at_m%s")
+    # is_processed_straight_before[k1][k2][m] - equals 1 if order k2 is the next order processed after order k1 at firm m, else 0
+    is_processed_straight_before = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m,
+                                                            name="k%s_is_processed_straight_before_k%s_at_m%s")
 
     # is_merged_with[k1][k2][m] - equals 1 if order k2 starts immediately after order k1 at firm m
     is_merged_with = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m, name="k%s_is_merged_with_k%s_at_m%s")
@@ -280,37 +280,37 @@ def build_model():
     # constraint #27
     f = lambda x, y: 0 if x == y else 1
     opt_model.add_constraints_(
-        is_processed_straight_after[(i, l, j)] <= f(i, l) for l in range(k) for i in range(k) for j in range(m)
+        is_processed_straight_before[(i, l, j)] <= f(i, l) for l in range(k) for i in range(k) for j in range(m)
     )
 
     # constraint #28
     opt_model.add_constraints_(
-        process_end[(i, j)] - large_number * (1 - is_processed_straight_after[(i, l, j)]) - process_start[(l, j)] <= 0
+        process_end[(i, j)] - large_number * (1 - is_processed_straight_before[(i, l, j)]) - process_start[(l, j)] <= 0
         for l in range(k) for j in range(m) for i in range(k)
     )
 
     # constraint #29
     opt_model.add_constraints_(
-        opt_model.sum(is_processed_straight_after[(i, l, j)] for i in range(k)) <= is_processed_by[(l, j)] for j in
+        opt_model.sum(is_processed_straight_before[(i, l, j)] for i in range(k)) <= is_processed_by[(l, j)] for j in
         range(m) for l in range(k)
     )
 
     # constraint #30
     opt_model.add_constraints_(
-        opt_model.sum(is_processed_straight_after[(l, i, j)] for i in range(k)) <= is_processed_by[(l, j)] for j in
+        opt_model.sum(is_processed_straight_before[(l, i, j)] for i in range(k)) <= is_processed_by[(l, j)] for j in
         range(m) for l in range(k)
     )
 
     # constraint #31
     opt_model.add_constraints_(
-        opt_model.sum(opt_model.sum(is_processed_straight_after[(i, l, j)] for l in range(k)) for i in range(k)) ==
+        opt_model.sum(opt_model.sum(is_processed_straight_before[(i, l, j)] for l in range(k)) for i in range(k)) ==
         opt_model.sum(is_processed_by[(i, j)] for i in range(k)) - 1
         for j in range(m)
     )
 
     # constraint #32
     opt_model.add_constraints_(
-        is_processed_straight_after[(i, l, j)] >= is_merged_with[(i, l, j)]
+        is_processed_straight_before[(i, l, j)] >= is_merged_with[(i, l, j)]
         for l in range(k)
         for j in range(m)
         for i in range(k)
