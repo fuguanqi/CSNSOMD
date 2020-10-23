@@ -153,7 +153,7 @@ def build_model():
 
     # Objective function
     objective_function = opt_model.sum(
-        holding_cost[i] * (production_end[i] - production_start[i] -
+        quantity[i] * holding_cost[i] * (production_end[i] - production_start[i] -
                             opt_model.sum(is_processed_by[(i, j)] * process_time[i][j] * quantity[i]
                                           + opt_model.sum(
                                 is_passed_from[(i, j, l)] * trsptt_time[j][l] for l in range(m))

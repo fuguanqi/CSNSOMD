@@ -71,7 +71,7 @@ order_network = [
 order_type = [0, 0]
 
 # process_firm[][] - which firm can conduct the processes
-process_firm = [[0,1], [2]]
+process_firm = [[0, 1], [2]]
 
 
 # ----------------------------------------------------------------------------
@@ -119,7 +119,7 @@ def build_model():
 
     # is_processed_straight_before[k1][k2][m] - equals 1 if order k2 is the next order processed after order k1 at firm m, else 0
     is_processed_straight_before = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m,
-                                                            name="k%s_is_processed_straight_before_k%s_at_m%s")
+                                                             name="k%s_is_processed_straight_before_k%s_at_m%s")
 
     # is_merged_with[k1][k2][m] - equals 1 if order k2 starts immediately after order k1 at firm m
     is_merged_with = opt_model.binary_var_cube(keys1=k, keys2=k, keys3=m, name="k%s_is_merged_with_k%s_at_m%s")
@@ -130,11 +130,11 @@ def build_model():
 
     # Objective function
     objective_function = opt_model.sum(
-        holding_cost[i] * (production_end[i] - production_start[i] -
-                           opt_model.sum(is_processed_by[(i, j)] * process_time[i][j] * quantity[i]
-                                         + opt_model.sum(
-                               is_passed_from[(i, j, l)] * trsptt_time[j][l] for l in range(m))
-                                         for j in range(m)))
+        quantity[i] * holding_cost[i] * (production_end[i] - production_start[i] -
+                                         opt_model.sum(is_processed_by[(i, j)] * process_time[i][j] * quantity[i]
+                                                       + opt_model.sum(
+                                             is_passed_from[(i, j, l)] * trsptt_time[j][l] for l in range(m))
+                                                       for j in range(m)))
         + quantity[i] * (holding_cost[i] + delay_penalty[i]) * (is_delayed_hat[i] - is_delayed[i] * due_time[i])
         + quantity[i] * holding_cost[i] * (due_time[i] - production_end[i])
         + opt_model.sum(variable_cost[j] * quantity[i] * is_processed_by[(i, j)] +
@@ -443,13 +443,13 @@ def build_model():
 
     # constraint #46-1
     opt_model.add_constraints_(
-        due_time[i] - production_end[i] <= -0.001+large_number * (1 - is_delayed[i])
+        due_time[i] - production_end[i] <= -0.001 + large_number * (1 - is_delayed[i])
         for i in range(k)
     )
 
     # constraint #46-2
     opt_model.add_constraints_(
-        due_time[i] - production_end[i] >=  - large_number * is_delayed[i]
+        due_time[i] - production_end[i] >= - large_number * is_delayed[i]
         for i in range(k)
     )
 
