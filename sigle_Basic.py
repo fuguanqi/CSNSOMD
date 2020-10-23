@@ -37,7 +37,8 @@ quantity = [10, 10]
 variable_cost = [0, 0, 0.4]
 
 # fixed_cost[m] -  given fixed cost of firm m
-fixed_cost = [0, 0, 300]
+fixed_cost = [0, 0, 600]
+# fixed_cost = [0, 0, 300]
 
 # trsptt_time[m1][m2] - transportation time from firm m1 to firm m2
 trsptt_time = [[0, 0, 10],
@@ -45,8 +46,8 @@ trsptt_time = [[0, 0, 10],
                [0, 0, 0]]
 
 # due_time[k] - due time of order k
-# due_time = [29.0, 60.0]
-due_time = [40.0, 60.0]
+due_time = [29.0, 60.0]
+# due_time = [40.0, 60.0]
 # due_time = [51.0, 60.0]
 
 # firm_start - the set of firms where production can start
