@@ -460,35 +460,34 @@ def build_model(due_time, fixed_cost):
 
     # constraint #46-1
     opt_model.add_constraints_(
-        due_time[i] - production_end[i] <= -0.001 + large_number * (1 - is_delayed[i])
+        due_time[i] - production_end[i] <= large_number * (1 - is_delayed[i])
         for i in range(k)
     )
 
     # constraint #46-2
     opt_model.add_constraints_(
-        due_time[i] - production_end[i] >= - large_number * is_delayed[i]
+        due_time[i] - production_end[i] >= 0.0001 - large_number * is_delayed[i]
         for i in range(k)
     )
 
     return opt_model
 
 
-def run_cplex(due_time, fixed_cost):
+def run_cplex(due_time, fixed_cost, outfile):
     md = build_model(due_time, fixed_cost)
+    md.float_precision = 4
     md.print_information()
     md.solve()
     md.report()
     print(md.solution)
     # print(md.get_solve_status())
     # print(md.get_statistics())
-    outfile = open("outfile.txt", "a")
     outfile.write(
         str(due_time[0]) + "," + str(due_time[1]) + "," + str(fixed_cost[2]) + "," + str(
-            md.get_var_by_name("production_end_0")) + "," +
-        str(md.get_var_by_name("production_end_1")) + "," + str(
-            md.get_var_by_name("k0_is_merged_with_k1_at_m2")) + "," +
-        str(md.get_var_by_name("k1_is_merged_with_k0_at_m2")))
-    outfile.close()
+            md.get_var_by_name("production_end_0").solution_value) + "," +
+        str(md.get_var_by_name("production_end_1").solution_value) + "," + str(
+            md.get_var_by_name("k0_is_merged_with_k1_at_m2").solution_value) + "," +
+        str(md.get_var_by_name("k1_is_merged_with_k0_at_m2").solution_value) + "\r")
 
 
 # Press the green button in the gutter to run the script.
@@ -498,9 +497,12 @@ if __name__ == '__main__':
     fixed_cost = [0, 0, 0]
     f = open('outfile.txt', "r+")
     f.truncate()
-    for d0 in np.arange(0, 100, 10):
-        for d1 in np.arange(0, 100, 10):
-            for fc in np.arange(0, 1000, 10):
+    f.close()
+    outfile = open("outfile.txt", "a")
+    for d0 in np.arange(0, 100, 0.5):
+        for d1 in np.arange(0, 100, 0.5):
+            for fc in np.arange(0, 1000, 5):
                 due_time = [d0, d1]
                 fixed_cost = [0, 0, fc]
-                run_cplex(due_time, fixed_cost)
+                run_cplex(due_time, fixed_cost, outfile)
+    outfile.close()
